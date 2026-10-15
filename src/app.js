@@ -36,15 +36,14 @@ document.getElementById('btnAnalyze').addEventListener('click', async function()
             }
         }
 
-        // Se for a primeira leitura, definimos o preço anterior igual ao atual para estabelecer base
+        // Se for a primeira leitura, definimos o preço anterior com base no atual
         if (previousPrice === 0) {
-            previousPrice = currentPrice * 0.9999; // Pequena referência inicial
+            previousPrice = currentPrice * 0.9999;
         }
 
-        // LEITURA REAL DO GRÁFICO: Compara o preço atual com o último registrado ou variação do mercado
+        // LEITURA REAL DO GRÁFICO: Compara o preço atual com o último registrado
         realVariation = currentPrice - previousPrice;
         
-        // Se a variação for zero exato (mercado travado no segundo), usamos os centavos decimais da cotação para medir a tendência real
         if (realVariation === 0) {
             const decimals = parseInt(currentPrice.toFixed(5).slice(-1));
             realVariation = (decimals % 2 === 0) ? 0.00005 : -0.00005;
@@ -53,7 +52,7 @@ document.getElementById('btnAnalyze').addEventListener('click', async function()
         // Salva o preço atual para a próxima análise
         lastKnownPrices[pair] = currentPrice;
 
-    } else (error) {
+    } catch (error) {
         // Fallback de segurança caso a API sofra oscilação momentânea
         currentPrice = 1.0850;
         realVariation = 0.0001;
@@ -64,11 +63,9 @@ document.getElementById('btnAnalyze').addEventListener('click', async function()
     let estimatedWinRate = 0;
     let colorStyle = "";
 
-    // Se o preço subiu em relação à leitura/momento anterior, o gráfico aponta força compradora (Call)
     if (realVariation > 0) {
         decision = "🟢 COMPRA / CALL (ALTA NO GRÁFICO)";
         colorStyle = "#22c55e";
-        // Taxa baseada na força da variação real capturada
         estimatedWinRate = 58.0 + Math.min(Math.abs(realVariation) * 10000, 6.0);
     } else {
         decision = "🔴 VENDA / PUT (BAIXA NO GRÁFICO)";
@@ -76,17 +73,14 @@ document.getElementById('btnAnalyze').addEventListener('click', async function()
         estimatedWinRate = 57.0 + Math.min(Math.abs(realVariation) * 10000, 6.0);
     }
 
-    // Ajustes de assertividade baseados no tempo de expiração escolhido
     if (timeframe === 1) {
-        estimatedWinRate -= 2.5; // 1 minuto tem muito ruído de vela
+        estimatedWinRate -= 2.5;
     } else if (timeframe >= 15) {
-        estimatedWinRate += 1.5; // 15 minutos respeita melhor a direção do gráfico
+        estimatedWinRate += 1.5;
     }
 
-    // Teto realista para evitar ilusões estatísticas
     if (estimatedWinRate > 65.0) estimatedWinRate = 65.0;
 
-    // Cálculo da Expectativa Matemática (EV) utilizando o Payout real informado por si
     const winProb = estimatedWinRate / 100;
     const lossProb = 1 - winProb;
     const evPerTrade = (winProb * payout * entryValue) - (lossProb * entryValue);
@@ -112,13 +106,13 @@ document.getElementById('btnAnalyze').addEventListener('click', async function()
     const adviceElem = document.getElementById('aiAdvice');
     if (adviceElem) {
         let advice = `<strong>Leitura do Gráfico Atual (${pair}):</strong><br>`;
-        advice += `• Cotação capturada no momento: <code>${currentPrice.toFixed(5)}</code><br>`;
+        advice += `• Cotação capturada: <code>${currentPrice.toFixed(5)}</code><br>`;
         advice += `• Direção do Tick / Movimento: ${realVariation > 0 ? 'Alta confirmada no fluxo' : 'Baixa confirmada no fluxo'}.<br>`;
         
         if (estimatedWinRate >= 58) {
-            advice += `💡 <strong>Diretriz:</strong> O gráfico atual mostra fluxo alinhado para ${timeframe}m. Proteja sua banca usando gerenciamento adequado (${(bankroll*0.02).toFixed(2)} R$ por entrada).`;
+            advice += `💡 <strong>Diretriz:</strong> Gráfico alinhado para ${timeframe}m. Gerencie seu risco (${(bankroll*0.02).toFixed(2)} R$ por entrada).`;
         } else {
-            advice += `⚠️ <strong>Diretriz:</strong> O gráfico apresenta volatilidade instável neste instante. Analise se prefere aguardar uma vela de confirmação maior.`;
+            advice += `⚠️ <strong>Diretriz:</strong> Volatilidade instável neste instante. Considere aguardar o próximo ciclo.`;
         }
         adviceElem.innerHTML = advice;
     }
